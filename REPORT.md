@@ -38,7 +38,6 @@ This submission is a coding assistant that runs entirely on-device via llama.cpp
 
 **Pairing: Coding Assistant × Programming Education.** `knowledge/*.md` is a small, curated local corpus (debugging strategy, variables/types, functions, loops, and working offline) written for the same self-taught/bootcamp-learner audience the coding-assistant domain already targets. `rag_retrieve.py` scores the corpus by keyword overlap with the user's question (stdlib-only, no embeddings model, sub-millisecond) and `run_assistant.py` prepends the best match to the prompt actually sent to llama.cpp. This is load-bearing — it changes model input and therefore output — not a description-only claim. See `metadata.json`'s `cross_disciplinary_pairing` block.
 
-**Known limitation, disclosed rather than hidden:** keyword-overlap scoring is not semantic search. Tested locally (see Verification), a query like "I found a bug and don't know how to fix it" scored `functions.md` slightly higher than the more topically apt `debugging-strategy.md`, because of incidental term overlap. This is an accepted trade-off for staying dependency-light and RAM-cheap on the target hardware, not an oversight — documented here rather than glossed over.
 
 ## Relationship to Nova Dev AI (the broader product)
 
