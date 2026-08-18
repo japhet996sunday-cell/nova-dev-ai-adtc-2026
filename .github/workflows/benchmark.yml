@@ -44,6 +44,7 @@ jobs:
       - name: Build llama-bench
         run: |
           cd llama.cpp
+
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DLLAMA_CURL=OFF \
@@ -71,7 +72,7 @@ jobs:
           python3 -m pip install \
             "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
 
-        - name: Download model
+      - name: Download model
         timeout-minutes: 15
         run: |
           echo "========================================"
@@ -91,24 +92,28 @@ jobs:
 
           echo "MODEL DOWNLOAD SUCCESS"
 
-
       - name: Verify submission
         run: |
           echo "=== Submission files ==="
           find . -maxdepth 2 -type f | sort
+
           echo
           echo "=== Model ==="
           find model -maxdepth 1 -type f -ls || true
+
           echo
           echo "=== Metadata ==="
           python3 -m json.tool metadata.json > /dev/null
+
           echo "metadata.json is valid JSON"
 
       - name: Run ADTC Benchmark
         run: |
           mkdir -p benchmark-output
 
-          echo "Starting ADTC profiler..."
+          echo "========================================"
+          echo "STARTING ADTC PROFILER"
+          echo "========================================"
           echo "Start time: $(date)"
 
           adtc-profiler run \
@@ -116,12 +121,16 @@ jobs:
             --mode participant \
             --output submission.json
 
+          echo
           echo "Finished: $(date)"
 
       - name: Display results
         if: always()
         run: |
-          echo "=== submission.json ==="
+          echo "========================================"
+          echo "SUBMISSION RESULTS"
+          echo "========================================"
+
           if [ -f submission.json ]; then
             cat submission.json
           else
