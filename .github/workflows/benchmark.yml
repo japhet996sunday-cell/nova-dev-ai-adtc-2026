@@ -5,9 +5,7 @@ on:
 
 jobs:
   benchmark:
-    name: ADTC Benchmark
     runs-on: ubuntu-latest
-    timeout-minutes: 45
 
     steps:
       - name: Checkout submission
@@ -15,197 +13,106 @@ jobs:
 
       - name: Show runner hardware
         run: |
-          echo "========================================"
-          echo "RUNNER HARDWARE"
-          echo "========================================"
-          echo "CPU:"
-          nproc
-          lscpu | grep -E 'Model name|CPU\(s\)|Thread|Core' || true
-
+          echo "=== CPU ==="
+          lscpu | grep -E 'Model name|CPU\(s\)|Thread|Core'
           echo
-          echo "MEMORY:"
+          echo "=== MEMORY ==="
           free -h
-
           echo
-          echo "DISK:"
+          echo "=== DISK ==="
           df -h
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Verify submission
-        run: |
-          echo "========================================"
-          echo "SUBMISSION CHECK"
-          echo "========================================"
-
-          test -f metadata.json
-          test -f download_model.sh
-          test -f REPORT.md
-
-          echo
-          echo "Files:"
-          find . -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
-
-          echo
-          echo "Metadata:"
-          python -m json.tool metadata.json
+          python-version: '3.11'
 
       - name: Install build dependencies
-        timeout-minutes: 5
         run: |
-          echo "Installing build dependencies..."
-
           sudo apt-get update
-
           sudo apt-get install -y \
             build-essential \
             cmake \
-            git \
-            libssl-dev
+            git
 
-      - name: Build llama.cpp
-        timeout-minutes: 15
+      - name: Clone llama.cpp
         run: |
-          echo "========================================"
-          echo "BUILDING LLAMA.CPP"
-          echo "========================================"
-
-          git clone --depth=1 https://github.com/ggml-org/llama.cpp.git
-
+          git clone --depth 1 https://github.com/ggml-org/llama.cpp.git
           cd llama.cpp
+          git rev-parse HEAD
 
+      - name: Build llama-bench
+        run: |
+          cd llama.cpp
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DGGML_NATIVE=OFF
+            -DLLAMA_CURL=OFF \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=ON
 
           cmake --build build \
             --config Release \
-            --target llama-bench llama-cli \
-            -j "$(nproc)"
+            --target llama-bench \
+            -j2
 
-          echo
-          echo "Build complete."
+          ./build/bin/llama-bench --help | head -40
 
-          ls -lh build/bin/llama-bench
-          ls -lh build/bin/llama-cli
+          sudo cp ./build/bin/llama-bench /usr/local/bin/llama-bench
 
-      - name: Add llama.cpp to PATH
+      - name: Verify llama-bench
         run: |
-          echo "$GITHUB_WORKSPACE/llama.cpp/build/bin" >> "$GITHUB_PATH"
-
-      - name: Verify llama.cpp
-        run: |
-          echo "========================================"
-          echo "VERIFYING LLAMA.CPP"
-          echo "========================================"
-
           command -v llama-bench
-          command -v llama-cli
-
+          ls -lh "$(command -v llama-bench)"
           llama-bench --help | head -20
-          llama-cli --help | head -20
 
-      - name: Download model
-        timeout-minutes: 10
+      - name: Install ADTC Profiler
         run: |
-          echo "========================================"
-          echo "DOWNLOADING MODEL"
-          echo "========================================"
-
-          chmod +x download_model.sh
-
-          bash download_model.sh
-
-          echo
-          echo "Model files:"
-          ls -lh model/
-
-      - name: Verify GGUF
-        run: |
-          echo "========================================"
-          echo "VERIFYING GGUF"
-          echo "========================================"
-
-          MODEL=$(find model -maxdepth 1 -type f -name '*.gguf' | head -1)
-
-          if [ -z "$MODEL" ]; then
-            echo "ERROR: No GGUF model found."
-            exit 1
-          fi
-
-          echo "Model: $MODEL"
-          ls -lh "$MODEL"
-
-      - name: Run llama-bench smoke test
-        timeout-minutes: 10
-        run: |
-          echo "========================================"
-          echo "LLAMA-BENCH SMOKE TEST"
-          echo "========================================"
-
-          MODEL=$(find model -maxdepth 1 -type f -name '*.gguf' | head -1)
-
-          llama-bench \
-            -m "$MODEL" \
-            -p 32 \
-            -n 16 \
-            -ngl 0 \
-            -t 4 \
-            -r 1 \
-            --no-warmup \
-            --progress \
-            -o json \
-            2>&1 | tee llama-bench.log
-
-      - name: Install ADTC profiler
-        timeout-minutes: 5
-        run: |
-          echo "========================================"
-          echo "INSTALLING ADTC PROFILER"
-          echo "========================================"
-
-          python -m pip install --upgrade pip
-
-          python -m pip install \
+          python3 -m pip install --upgrade pip
+          python3 -m pip install \
             "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
 
-          command -v adtc-profiler
-          adtc-profiler --help
-
-      - name: Run ADTC profiler
-        timeout-minutes: 20
+      - name: Verify submission
         run: |
-          echo "========================================"
-          echo "STARTING ADTC PROFILER"
-          echo "========================================"
+          echo "=== Submission files ==="
+          find . -maxdepth 2 -type f | sort
+          echo
+          echo "=== Model ==="
+          find model -maxdepth 1 -type f -ls || true
+          echo
+          echo "=== Metadata ==="
+          python3 -m json.tool metadata.json > /dev/null
+          echo "metadata.json is valid JSON"
+
+      - name: Run ADTC Benchmark
+        run: |
+          mkdir -p benchmark-output
+
+          echo "Starting ADTC profiler..."
+          echo "Start time: $(date)"
 
           adtc-profiler run \
             --submission . \
             --mode participant \
-            --output submission.json \
-            --skip-accuracy
+            --output submission.json
 
-          echo
-          echo "========================================"
-          echo "ADTC PROFILER COMPLETE"
-          echo "========================================"
+          echo "Finished: $(date)"
 
-          test -f submission.json
+      - name: Display results
+        if: always()
+        run: |
+          echo "=== submission.json ==="
+          if [ -f submission.json ]; then
+            cat submission.json
+          else
+            echo "submission.json was not produced"
+          fi
 
-          echo
-          echo "RESULT:"
-          cat submission.json
-
-      - name: Upload benchmark results
+      - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: adtc-benchmark-results
+          name: benchmark-results
           path: |
             submission.json
-            llama-bench.log
-            REPORT.md
+            benchmark-output/**
           if-no-files-found: warn
