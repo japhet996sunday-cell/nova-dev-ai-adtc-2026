@@ -8,26 +8,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install deps
+      - name: Install llama-bench
         run: |
-          python -m pip install --upgrade pip
-          pip install build wheel
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git
+          git clone https://github.com/ggerganov/llama.cpp
+          cd llama.cpp && cmake -B build -DLLAMA_CUBLAS=OFF && cmake --build build --config Release -j4
+          sudo cp build/bin/llama-bench /usr/local/bin/
 
       - name: Install ADTC Profiler
-        run: |
-          curl -L https://github.com/adtc-ai/profiler/releases/latest/download/adtc_profiler-0.2.1-py3-none-any.whl -o profiler.whl
-          pip install profiler.whl
+        run: python3 -m pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
 
       - name: Run ADTC Benchmark
-        run: adtc-profiler mode=participant --model ./model/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf --output results.json
+        run: adtc-profiler run --submission . --mode participant --output submission.json
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: results.json
+          path: submission.json
