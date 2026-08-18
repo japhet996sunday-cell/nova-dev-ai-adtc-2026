@@ -71,6 +71,27 @@ jobs:
           python3 -m pip install \
             "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
 
+        - name: Download model
+        timeout-minutes: 15
+        run: |
+          echo "========================================"
+          echo "DOWNLOADING MODEL"
+          echo "========================================"
+
+          chmod +x download_model.sh
+          bash download_model.sh
+
+          echo
+          echo "Downloaded model:"
+          ls -lh model/
+
+          echo
+          echo "Checking expected model:"
+          test -f model/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf
+
+          echo "MODEL DOWNLOAD SUCCESS"
+
+
       - name: Verify submission
         run: |
           echo "=== Submission files ==="
