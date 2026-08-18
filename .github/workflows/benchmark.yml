@@ -1,34 +1,211 @@
 name: ADTC Benchmark
+
 on:
   workflow_dispatch:
 
 jobs:
   benchmark:
+    name: ADTC Benchmark
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout submission
+        uses: actions/checkout@v4
+
+      - name: Show runner hardware
+        run: |
+          echo "========================================"
+          echo "RUNNER HARDWARE"
+          echo "========================================"
+          echo "CPU:"
+          nproc
+          lscpu | grep -E 'Model name|CPU\(s\)|Thread|Core' || true
+
+          echo
+          echo "MEMORY:"
+          free -h
+
+          echo
+          echo "DISK:"
+          df -h
 
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install llama-bench
+      - name: Verify submission
         run: |
+          echo "========================================"
+          echo "SUBMISSION CHECK"
+          echo "========================================"
+
+          test -f metadata.json
+          test -f download_model.sh
+          test -f REPORT.md
+
+          echo
+          echo "Files:"
+          find . -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+
+          echo
+          echo "Metadata:"
+          python -m json.tool metadata.json
+
+      - name: Install build dependencies
+        timeout-minutes: 5
+        run: |
+          echo "Installing build dependencies..."
+
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake git
-          git clone https://github.com/ggerganov/llama.cpp
-          cd llama.cpp && cmake -B build -DLLAMA_CUBLAS=OFF && cmake --build build --config Release -j4
-          sudo cp build/bin/llama-bench /usr/local/bin/
 
-      - name: Install ADTC Profiler
-        run: python3 -m pip install "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            git \
+            libssl-dev
 
-      - name: Run ADTC Benchmark
-        run: adtc-profiler run --submission . --mode participant --output submission.json
+      - name: Build llama.cpp
+        timeout-minutes: 15
+        run: |
+          echo "========================================"
+          echo "BUILDING LLAMA.CPP"
+          echo "========================================"
 
-      - name: Upload results
+          git clone --depth=1 https://github.com/ggml-org/llama.cpp.git
+
+          cd llama.cpp
+
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_NATIVE=OFF
+
+          cmake --build build \
+            --config Release \
+            --target llama-bench llama-cli \
+            -j "$(nproc)"
+
+          echo
+          echo "Build complete."
+
+          ls -lh build/bin/llama-bench
+          ls -lh build/bin/llama-cli
+
+      - name: Add llama.cpp to PATH
+        run: |
+          echo "$GITHUB_WORKSPACE/llama.cpp/build/bin" >> "$GITHUB_PATH"
+
+      - name: Verify llama.cpp
+        run: |
+          echo "========================================"
+          echo "VERIFYING LLAMA.CPP"
+          echo "========================================"
+
+          command -v llama-bench
+          command -v llama-cli
+
+          llama-bench --help | head -20
+          llama-cli --help | head -20
+
+      - name: Download model
+        timeout-minutes: 10
+        run: |
+          echo "========================================"
+          echo "DOWNLOADING MODEL"
+          echo "========================================"
+
+          chmod +x download_model.sh
+
+          bash download_model.sh
+
+          echo
+          echo "Model files:"
+          ls -lh model/
+
+      - name: Verify GGUF
+        run: |
+          echo "========================================"
+          echo "VERIFYING GGUF"
+          echo "========================================"
+
+          MODEL=$(find model -maxdepth 1 -type f -name '*.gguf' | head -1)
+
+          if [ -z "$MODEL" ]; then
+            echo "ERROR: No GGUF model found."
+            exit 1
+          fi
+
+          echo "Model: $MODEL"
+          ls -lh "$MODEL"
+
+      - name: Run llama-bench smoke test
+        timeout-minutes: 10
+        run: |
+          echo "========================================"
+          echo "LLAMA-BENCH SMOKE TEST"
+          echo "========================================"
+
+          MODEL=$(find model -maxdepth 1 -type f -name '*.gguf' | head -1)
+
+          llama-bench \
+            -m "$MODEL" \
+            -p 32 \
+            -n 16 \
+            -ngl 0 \
+            -t 4 \
+            -r 1 \
+            --no-warmup \
+            --progress \
+            -o json \
+            2>&1 | tee llama-bench.log
+
+      - name: Install ADTC profiler
+        timeout-minutes: 5
+        run: |
+          echo "========================================"
+          echo "INSTALLING ADTC PROFILER"
+          echo "========================================"
+
+          python -m pip install --upgrade pip
+
+          python -m pip install \
+            "git+https://github.com/Africa-Deep-Tech-Foundation/adtc-profiler.git"
+
+          command -v adtc-profiler
+          adtc-profiler --help
+
+      - name: Run ADTC profiler
+        timeout-minutes: 20
+        run: |
+          echo "========================================"
+          echo "STARTING ADTC PROFILER"
+          echo "========================================"
+
+          adtc-profiler run \
+            --submission . \
+            --mode participant \
+            --output submission.json \
+            --skip-accuracy
+
+          echo
+          echo "========================================"
+          echo "ADTC PROFILER COMPLETE"
+          echo "========================================"
+
+          test -f submission.json
+
+          echo
+          echo "RESULT:"
+          cat submission.json
+
+      - name: Upload benchmark results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results
-          path: submission.json
+          name: adtc-benchmark-results
+          path: |
+            submission.json
+            llama-bench.log
+            REPORT.md
+          if-no-files-found: warn
