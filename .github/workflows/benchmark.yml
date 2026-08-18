@@ -7,16 +7,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install build wheel
+          
       - name: Install adtc-profiler
-        run: pip install --upgrade pip && pip install adtc-profiler
+        run: pip install adtc-profiler
+        
       - name: Run ADTC Benchmark
-        run: adtc-profiler run --model ./model --output submission-x86.json
+        run: adtc-profiler run --model ./model --output results.json
+        
       - name: Upload results
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: submission-x86.json
+          path: results.json
