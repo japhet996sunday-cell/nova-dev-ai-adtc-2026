@@ -187,3 +187,40 @@ View the full eligibility rules at [adtc-2026.devpost.com/rules](https://adtc-20
 ## 📄 License
 
 This template is licensed under the terms of the [GNU GPL v3 License](LICENSE).
+
+## Latest ADTC Benchmark Results
+
+**Benchmark source:** `submission.json` generated from the GitHub Actions benchmark runner.
+
+| Metric | Result |
+|---|---:|
+| Model | `Qwen2.5-Coder-1.5B-Instruct` |
+| Parameters | `1,777,088,000` |
+| Context length | `32768` |
+| Accuracy (ARC-Easy) | **0.64** |
+| Generation throughput | **28.83 tokens/s** |
+| First-token latency | **8460.38 ms** |
+| Peak RSS | **1828.18 MB** |
+| Steady-state RSS | **1782.57 MB** |
+| Peak VMS | **2313.20 MB** |
+| CPU p99 | **55.0%** |
+| CPU throttling | **No** |
+| Runner CPU | `AMD EPYC 7763 64-Core Processor` |
+| Runner RAM | `15.6 GB` |
+| GPU | `none` |
+| OS | `Ubuntu 24.04.4 LTS` |
+
+### Reproducibility
+
+- Profiler: `adtc-profiler 0.1.0`
+- Schema: `1.1.0`
+- Git commit recorded by profiler: `5f358209a482`
+- Random seed: `42`
+- Runtime: `llama.cpp`
+- Quantization: `GGUF Q4_K_M`
+
+> These values are taken directly from the latest `submission.json`. SPERF and SEFF are intentionally left unchanged.
+
+_Last synchronized: 2026-08-19 03:10_
+
+## END LATEST ADTC BENCHMARK

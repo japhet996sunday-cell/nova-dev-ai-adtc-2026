@@ -155,3 +155,193 @@ This indicates that running four independent model instances concurrently exceed
 The assistant's core pipeline is functional in single-process operation and successfully completed a two-process concurrent test. Four simultaneous model instances were not sustainable on the ARM64 development device and resulted in exit code 247.
 
 Because the official ADTC evaluation targets a standard 8 GB RAM laptop and evaluates the submitted model/runtime under its own controlled conditions, these Android concurrency results are development-device observations rather than official ADTC benchmark results.
+
+## Latest ADTC Benchmark Results
+
+**Benchmark source:** `submission.json` generated from the GitHub Actions benchmark runner.
+
+| Metric | Result |
+|---|---:|
+| Model | `Qwen2.5-Coder-1.5B-Instruct` |
+| Parameters | `1,777,088,000` |
+| Context length | `32768` |
+| Accuracy (ARC-Easy) | **0.64** |
+| Generation throughput | **28.83 tokens/s** |
+| First-token latency | **8460.38 ms** |
+| Peak RSS | **1828.18 MB** |
+| Steady-state RSS | **1782.57 MB** |
+| Peak VMS | **2313.20 MB** |
+| CPU p99 | **55.0%** |
+| CPU throttling | **No** |
+| Runner CPU | `AMD EPYC 7763 64-Core Processor` |
+| Runner RAM | `15.6 GB` |
+| GPU | `none` |
+| OS | `Ubuntu 24.04.4 LTS` |
+
+### Reproducibility
+
+- Profiler: `adtc-profiler 0.1.0`
+- Schema: `1.1.0`
+- Git commit recorded by profiler: `5f358209a482`
+- Random seed: `42`
+- Runtime: `llama.cpp`
+- Quantization: `GGUF Q4_K_M`
+
+> These values are taken directly from the latest `submission.json`. SPERF and SEFF are intentionally left unchanged.
+
+_Last synchronized: 2026-08-19 03:10_
+
+## END LATEST ADTC BENCHMARK
+
+---
+
+# Benchmark Evidence and Reproducibility
+
+## Official GitHub Actions Benchmark
+
+The primary benchmark results for this submission were obtained using the ADTC profiler in the GitHub Actions evaluation environment. These results are treated as the principal benchmark evidence for the submission.
+
+| Metric | Result |
+|---|---:|
+| Model | Qwen2.5-Coder-1.5B-Instruct |
+| Quantization | GGUF Q4_K_M |
+| Generation throughput | **28.83 tokens/s** |
+| First-token latency | **8460.38 ms** |
+| Peak RSS | **1828.18 MB** |
+| Steady-state RSS | **1782.57 MB** |
+| ARC-Easy accuracy | **64%** |
+| CPU p99 | **55.0%** |
+| CPU throttling | **No** |
+| GPU | None |
+| Prompt tokens | 512 |
+| Generated tokens | 128 |
+
+### Calculated ADTC Performance and Efficiency Scores
+
+Using the formulas documented by the ADTC profiler:
+
+**SPERF**
+
+`min(TPS / TPS_REFERENCE, 1.0) × 100`
+
+With `TPS = 28.83` and `TPS_REFERENCE = 15.0`:
+
+`min(28.83 / 15.0, 1.0) × 100 = 100.00`
+
+**SPERF = 100.00**
+
+**SEFF**
+
+`max(0, (RAM_LIMIT_GB - peak_rss_gb) / RAM_LIMIT_GB) × 100`
+
+Using the ADTC `RAM_LIMIT_GB = 7.0` and converting the measured peak RSS of 1828.18 MiB to GiB:
+
+`1828.18 / 1024 = 1.7853 GiB`
+
+Therefore:
+
+`((7.0 - 1.7853) / 7.0) × 100 = 74.50`
+
+**SEFF = 74.50**
+
+### Derived Weighted Score
+
+Using the documented weighting:
+
+`0.50 × S_acc + 0.30 × S_perf + 0.20 × S_eff`
+
+With:
+
+- `S_acc = 64.00`
+- `S_perf = 100.00`
+- `S_eff = 74.50`
+
+The resulting weighted score before any thermal penalty is:
+
+**76.90 / 100**
+
+No thermal penalty is indicated by the recorded `throttled: false` result.
+
+> These SPERF, SEFF, and weighted-score values are calculations from the published profiler formula and the recorded benchmark measurements. They should not be presented as an independently issued official leaderboard score unless the competition platform itself publishes that score.
+
+---
+
+## Historical GitHub Actions Benchmark
+
+A previous GitHub Actions run is retained separately as historical/reproducibility evidence. It is not averaged with the primary run.
+
+| Metric | Historical result |
+|---|---:|
+| CPU | Intel Xeon Platinum 8573C |
+| Generation throughput | **17.13 tokens/s** |
+| First-token latency | **2528.18 ms** |
+| Peak RSS | **2000.65 MB** |
+| Steady-state RSS | **1919.82 MB** |
+| ARC-Easy accuracy | **68%** |
+| CPU p99 | **52.8%** |
+| Peak temperature | **49.9°C** |
+| CPU throttling | **No** |
+
+The difference between the two GitHub Actions runs is expected because the measurements were performed on different CI runner hardware. The runs are therefore reported independently rather than averaged.
+
+---
+
+## Android/Termux Development Testing
+
+Additional development and functional testing was performed on an ARM64 Android/Termux device using the packaged Qwen2.5-Coder-1.5B-Instruct Q4_K_M model.
+
+These results are **supplementary development evidence only** and are not used as the official ADTC participant-laptop benchmark.
+
+### Functional pipeline
+
+The complete offline pipeline was successfully verified:
+
+**User question → RAG retrieval → prompt construction → Qwen2.5-Coder → generated response → clean exit**
+
+Representative tests successfully verified:
+
+- Python function explanation
+- Python list/index explanation
+- Debugging a Python function
+- Relevant local knowledge retrieval
+- Successful model loading
+- Successful response generation
+- Clean process termination
+
+A knowledge-base correction was also verified through the RAG retriever. The documentation now correctly states that a Python function that reaches the end without a `return` statement returns the Python value `None`.
+
+### Concurrent process testing
+
+Two independent `run_assistant.py` processes were successfully executed concurrently.
+
+**Result: 2/2 processes completed successfully.**
+
+Four simultaneous independent model processes were subsequently tested and exceeded the practical resource capacity of the Android/Termux development configuration.
+
+**Result: 0/4 completed successfully.**
+
+This is considered a development-device resource limitation rather than a failure of the single-process assistant pipeline.
+
+### Android llama-bench measurement
+
+A completed Android/Termux `llama-bench` measurement recorded:
+
+| Configuration | Prompt processing | Generation | Threads | Result |
+|---|---:|---:|---:|---|
+| `pp64 / tg16` | **1.70 tokens/s** | **0.14 tokens/s** | 4 | PASS |
+| `pp128 / tg128` | **3.70 tokens/s** | Not completed | 8 | INTERRUPTED |
+
+The Android runtime also reported `ggml_vulkan: No devices found.` This is retained as a platform-specific development observation and does not represent the official competition runtime.
+
+The Android measurements are deliberately kept separate from the GitHub Actions benchmark and are not used to calculate the official SPERF, SEFF, memory, thermal, or accuracy results.
+
+---
+
+## Benchmark Interpretation
+
+The GitHub Actions measurements constitute the primary quantitative benchmark evidence for this submission.
+
+The Android/Termux work provides additional evidence that the application, local RAG pipeline, and packaged quantized model can operate offline on ARM64 mobile hardware, while also documenting the practical resource limits encountered when multiple model instances are launched concurrently.
+
+The different environments are intentionally reported separately to avoid mixing measurements obtained under different hardware, operating-system, runtime, and resource conditions.
+
