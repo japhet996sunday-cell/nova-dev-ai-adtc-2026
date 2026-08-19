@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.1.0",
+  "profiler_version": "adtc-profiler 0.1.0",
+  "submission": {
+    "team_id": "nova-dev-ai",
+    "domain": "coding_assistants",
+    "language_scope": [
+      "en"
+    ],
+    "african_alpha_claim": false,
+    "budget_laptop_claim": true,
+    "submitter": {
+      "name": "Japhet Sunday",
+      "email": "japhet996sunday@gmail.com",
+      "github_handle": "japhet996sunday-cell"
+    },
+    "cross_disciplinary_pairing": {
+      "discipline": "education",
+      "load_bearing": true,
+      "description": "The coding assistant is paired with a local, offline programming-fundamentals corpus (knowledge/*.md). Before generation, rag_retrieve.py scores the corpus by keyword overlap with the user's question and prepends the best-matching document to the prompt sent to llama.cpp (see run_assistant.py:build_prompt). This is load-bearing, not decorative: the retrieved text changes what the model actually receives and can generate. It targets the same self-taught/bootcamp-learner audience the coding-assistant domain already serves, on the premise that grounding a small (1.5B) model's explanations in a fixed, vetted local curriculum improves reliability versus pure open-ended generation, without requiring network access or a second (embedding) model."
+    },
+    "test_prompts": [
+      {
+        "prompt_id": "tp_001",
+        "prompt": "I have a Python function that's supposed to return the largest number in a list, but it returns the wrong answer sometimes. Here it is: def find_max(nums):\n    largest = 0\n    for n in nums:\n        if n > largest:\n            largest = n\n    return largest\nWhat's wrong with it, and why?"
+      },
+      {
+        "prompt_id": "tp_002",
+        "prompt": "Explain what a race condition is in concurrent programming, using a simple real-world analogy, and show a minimal code example of one in JavaScript using async functions."
+      }
+    ],
+    "model": {
+      "name": "Qwen2.5-Coder-1.5B-Instruct",
+      "runtime": "llama.cpp",
+      "quantization": "GGUF Q4_K_M",
+      "parameters_estimate": "1.78B",
+      "packaging": "binary_bundle"
+    }
+  },
+  "environment": {
+    "measured_on": "participant_laptop",
+    "cpu_model": "AMD EPYC 7763 64-Core Processor",
+    "ram_gb": 15.6,
+    "gpu": "none",
+    "os": "Ubuntu 24.04.4 LTS"
+  },
+  "throughput": {
+    "tokens_per_second_generation": 28.83,
+    "first_token_latency_ms": 8460.38,
+    "prompt_tokens": 512,
+    "generated_tokens": 128
+  },
+  "memory": {
+    "peak_rss_mb": 1828.18,
+    "steady_state_rss_mb": 1782.57,
+    "peak_vms_mb": 2313.2
+  },
+  "accuracy": [
+    {
+      "benchmark": "arc_easy",
+      "dataset_version": "lm-eval-harness",
+      "language": "en",
+      "samples": 50,
+      "score": 0.64,
+      "metric": "acc_norm"
+    }
+  ],
+  "cpu_thermal": {
+    "cpu_percent_p99": 55.0,
+    "core_temp_c_peak": null,
+    "throttled": false
+  },
+  "reproducibility": {
+    "git_commit_sha": "5f358209a482",
+    "docker_image_digest": "unknown",
+    "random_seed": 42
+  },
+  "model_info": {
+    "params_count": 1777088000,
+    "context_length": 32768,
+    "architecture": "qwen2",
+    "claimed_params_estimate": "1.78B",
+    "params_match": true
+  }
+}
